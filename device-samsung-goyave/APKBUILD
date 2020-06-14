@@ -1,0 +1,23 @@
+# Maintainer: Devajith V S <devajithvs@gmail.com>
+# Reference: <https://postmarketos.org/devicepkg>
+pkgname=device-samsung-goyave
+pkgdesc="Samsung Galaxy Tab 3 V"
+pkgver=0.1
+pkgrel=0
+url="https://postmarketos.org"
+license="MIT"
+arch="armv7"
+options="!check !archcheck"
+depends="postmarketos-base linux-samsung-goyave mkbootimg mesa-dri-gallium"
+makedepends="devicepkg-dev"
+source="deviceinfo"
+
+build() {
+	devicepkg_build $startdir $pkgname
+}
+
+package() {
+	devicepkg_package $startdir $pkgname
+}
+
+sha512sums="(run 'pmbootstrap checksum device-samsung-goyave' to fill)"

@@ -1,0 +1,57 @@
+
+# Maintainer: Devajith V S <devajithvs@gmail.com>
+# Reference: <https://postmarketos.org/vendorkernel>
+# Kernel config based on: arch/arm/configs/(CHANGEME!)
+
+pkgname=linux-samsung-goyave
+pkgver=3.10.17
+pkgrel=0
+pkgdesc="Samsung Galaxy Tab 3 V kernel fork"
+arch="armv7"
+_carch="arm"
+_flavor="samsung-goyave"
+url="https://kernel.org"
+license="GPL-2.0-only"
+options="!strip !check !tracedeps pmb:cross-native"
+makedepends="perl sed installkernel bash gmp-dev bc linux-headers elfutils-dev devicepkg-dev dtbtool-sprd"
+
+# Source
+_repository="android_kernel_samsung_SM-T116"
+_commit="ec7f1fb896da9fc4cf7346ace77b811dd342a72c"
+_config="config-$_flavor.$arch"
+source="
+	$pkgname-$_commit.tar.gz::https://github.com/devajithvs/$_repository/archive/$_commit.tar.gz
+	$_config
+	gcc7-give-up-on-ilog2-const-optimizations.patch
+	gcc8-fix-put-user.patch
+	kernel-use-the-gnu89-standard-explicitly.patch
+	RFC-ftrace-scripts-Work-around-for-addition-of-metag-magic-but-not-relocations.patch
+"
+builddir="$srcdir/$_repository-$_commit"
+_outdir="out"
+
+prepare() {
+	default_prepare
+	. downstreamkernel_prepare
+}
+
+build() {
+	unset LDFLAGS
+	make O="$_outdir" ARCH="$_carch" CC="${CC:-gcc}" \
+		KBUILD_BUILD_VERSION="$((pkgrel + 1 ))-postmarketOS"
+	dtbTool-sprd -s 2048 -o "$_outdir/arch/$_carch/boot"/dt.img "$_outdir/arch/$_carch/boot/dts"
+}
+
+package() {
+	downstreamkernel_package "$builddir" "$pkgdir" "$_carch" "$_flavor" "$_outdir"
+
+	# Master DTB (deviceinfo_bootimg_qcdt)
+	install -Dm644 "$_outdir/arch/$_carch/boot"/dt.img "$pkgdir"/boot/dt.img
+}
+
+sha512sums="09d77036536e262ee3732e28b49c341a00ea4a9f390a634cc0bfa4ecef3b6980e2cef89b5621f5128f1728bd663deafe01beb8a4dddef82e8b02e510b48121e1  linux-samsung-goyave-ec7f1fb896da9fc4cf7346ace77b811dd342a72c.tar.gz
+3f4203fb0fd4b2d521ae5e8af75211298e88ce9c7e12f6e7a2965a4eb5232be6d0119aa43c8e627d16acf7742f8c51574680617568cb60e7282198eae73c0ee7  config-samsung-goyave.armv7
+77eba606a71eafb36c32e9c5fe5e77f5e4746caac292440d9fb720763d766074a964db1c12bc76fe583c5d1a5c864219c59941f5e53adad182dbc70bf2bc14a7  gcc7-give-up-on-ilog2-const-optimizations.patch
+197d40a214ada87fcb2dfc0ae4911704b9a93354b75179cd6b4aadbb627a37ec262cf516921c84a8b1806809b70a7b440cdc8310a4a55fca5d2c0baa988e3967  gcc8-fix-put-user.patch
+ad0182a483791fc88e058838bc331b2f04a75ba291e763767babdb815efadfc3b4fda97e69e2e3f00a426cabea088e35297a92bd287592597d1e309be68ee92c  kernel-use-the-gnu89-standard-explicitly.patch
+5e6e5b4eed09f8bc79cf9c670088dc58446cf7e2f2d7bc5028b975017bf797c8947a55e1fab02012c64efa7eab2e4f3924ac877d07fa5df45ba6b9cf82b0e6f2  RFC-ftrace-scripts-Work-around-for-addition-of-metag-magic-but-not-relocations.patch"

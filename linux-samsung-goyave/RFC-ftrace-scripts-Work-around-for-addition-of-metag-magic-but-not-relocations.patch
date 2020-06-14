@@ -1,0 +1,80 @@
+From patchwork Fri Jul  8 19:18:50 2016
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+X-Patchwork-Submitter: Laura Abbott <labbott@redhat.com>
+X-Patchwork-Id: 696647
+Return-Path: <linux-kernel-owner@vger.kernel.org>
+Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
+	id S1752537AbcGHTTK (ORCPT <rfc822;w@1wt.eu>);
+	Fri, 8 Jul 2016 15:19:10 -0400
+Received: from mail-qk0-f170.google.com ([209.85.220.170]:34171 "EHLO
+	mail-qk0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755163AbcGHTS6 (ORCPT
+	<rfc822;linux-kernel@vger.kernel.org>);
+	Fri, 8 Jul 2016 15:18:58 -0400
+From: Laura Abbott <labbott@redhat.com>
+To: "Steven Rostedt (Red Hat)" <rostedt@goodmis.org>
+Cc: Laura Abbott <labbott@redhat.com>, linux-kernel@vger.kernel.org
+Subject: [RFC][PATCH] ftrace/scripts: Work around for addition of metag magic
+ but not relocations
+Date: Fri,  8 Jul 2016 12:18:50 -0700
+Message-Id: <1468005530-14757-1-git-send-email-labbott@redhat.com>
+X-Mailer: git-send-email 2.7.4
+Sender: linux-kernel-owner@vger.kernel.org
+List-ID: <linux-kernel.vger.kernel.org>
+X-Mailing-List: linux-kernel@vger.kernel.org
+Content-Length: 1793
+Lines: 53
+
+glibc recently did a sync up (94e73c95d9b5 "elf.h: Sync with the gabi
+webpage") that added a #define for EM_METAG but did not add relocations
+
+This triggers build errors:
+
+scripts/recordmcount.c: In function 'do_file':
+scripts/recordmcount.c:466:28: error: 'R_METAG_ADDR32' undeclared (first use in this function)
+  case EM_METAG:  reltype = R_METAG_ADDR32;
+                            ^~~~~~~~~~~~~~
+scripts/recordmcount.c:466:28: note: each undeclared identifier is reported only once for each function it appears in
+scripts/recordmcount.c:468:20: error: 'R_METAG_NONE' undeclared (first use in this function)
+     rel_type_nop = R_METAG_NONE;
+                    ^~~~~~~~~~~~
+
+Work around this change with some more #ifdefery for the relocations.
+
+Signed-off-by: Laura Abbott <labbott@redhat.com>
+---
+I hit this while testing with a newer glibc. I'm not sure what the policy is
+about glibc, so this might just serve as an FYI for anyone else who
+is working on the bleeding edge.
+
+Fedora bug is at https://bugzilla.redhat.com/show_bug.cgi?id=1354034 for the
+curious.
+---
+ scripts/recordmcount.c | 9 ++++++++-
+ 1 file changed, 8 insertions(+), 1 deletion(-)
+
+diff --git a/scripts/recordmcount.c b/scripts/recordmcount.c
+index e1675927..42396a7 100644
+--- a/scripts/recordmcount.c
++++ b/scripts/recordmcount.c
+@@ -33,10 +33,17 @@
+ #include <string.h>
+ #include <unistd.h>
+ 
++/*
++ * glibc synced up and added the metag number but didn't add the relocations.
++ * Work around this in a crude manner for now.
++ */
+ #ifndef EM_METAG
+-/* Remove this when these make it to the standard system elf.h. */
+ #define EM_METAG      174
++#endif
++#ifndef R_METAG_ADDR32
+ #define R_METAG_ADDR32                   2
++#endif
++#ifndef R_METAG_NONE
+ #define R_METAG_NONE                     3
+ #endif
+ 
